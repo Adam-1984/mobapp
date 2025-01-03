@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:untitled3/mywidget.dart';
-import 'package:untitled3/pizza.dart';
+import 'mywidget.dart';
+import 'pizza.dart';
+import 'dart:convert'as convert;
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -38,6 +40,38 @@ class _HomeState extends State<Home> {
 
     });
   }
+  void fetchPizzaPrice(int size, String ingredients) async {
+
+    try {
+      final response = await http.get(Uri.parse(
+          'http://10.0.2.2/pizza/selectsize.php?size=$size&ingredients=$ingredients'));
+      print('Response body: ${response.body}');
+      if (response.statusCode == 200) {
+        final jsonResponse = convert.jsonDecode(response.body);
+
+        if (jsonResponse.containsKey('totalPrice')) {
+          setState(() {
+            int quantity = int.parse(qcontroller.text);
+            result = "The total price is \$${jsonResponse['totalPrice']*quantity}";
+          });
+        } else {
+          setState(() {
+            result = "Failed to fetch pizza price. Invalid response.";
+          });
+        }
+      } else {
+        setState(() {
+          result = "Failed to fetch pizza price. Server error.";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        result = "Error occurred: $e";
+      });
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,7 +111,7 @@ class _HomeState extends State<Home> {
               ),
             ),
         SizedBox(height: 20,)
-        , 
+        ,
         Text('Choose the pizza size', style: TextStyle(fontWeight: FontWeight.bold,fontSize: 24),)
         ,
         SizedBox(height: 5,),
@@ -160,41 +194,38 @@ class _HomeState extends State<Home> {
             ),
 
             SizedBox(height: 20,),
-            ElevatedButton(onPressed: (){
-              setState(() {
-                try{
-                  double quantity = double.parse(qcontroller.text);
-                  double sum= 0;
-                  if(FreshBasil){
-                    sum+=2.5;
-                  }
-                  if(CherryTomatoes){
-                    sum+=0.5;
-                  }
-                  if(FreshMozzarella){
-                    sum+=1.5;
-                  }
-                  if(ArtichokeHeart){
-                    sum+=3;
-                  }
-                  sum+= currentpizza.totalprice();
+            ElevatedButton(
+              onPressed: () {
+                List<String> selectedIngredients = [];
 
-                    result = "the total price is ${sum*quantity} \$" ;
-                  }
-                catch(E){
-                  result = "please enter a quatity";
 
+                if (FreshBasil) selectedIngredients.add("Fresh Basil");
+                if (CherryTomatoes) selectedIngredients.add("Cherry Tomatoes");
+                if (FreshMozzarella) selectedIngredients.add("Mozzarella");
+                if (ArtichokeHeart) selectedIngredients.add("Artichoke Heart");
+
+
+                String ingredients = selectedIngredients.join(',');
+
+
+                if (ingredients.isNotEmpty) {
+                  fetchPizzaPrice(currentpizza.size, ingredients);
+                } else {
+                  setState(() {
+                    result = "Please select at least one ingredient.";
+                  });
                 }
-              });
-            },
-              child: Text("Done", style: TextStyle(fontSize: 24,color: Colors.white),),
-              style:ElevatedButton.styleFrom(
+              },
+              child: Text("Get Price", style: TextStyle(fontSize: 24, color: Colors.white)),
+              style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red[900],
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            ),
+            )
+            ,
+
             SizedBox(height: 20,),
             Text('$result',style: TextStyle(color: Colors.black,fontSize: 24,fontWeight: FontWeight.bold))
           ],
